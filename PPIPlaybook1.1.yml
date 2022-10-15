@@ -1,0 +1,301 @@
+---
+- name: Playbook ppi
+  become: true
+  hosts: all
+  environment:
+    http_proxy: http://www-cache.ppi.int:3128
+
+  tasks:
+  - name: ensure ufw is deinstalled
+    apt:
+      name: ufw
+      state: absent
+
+
+  - name: ensure firewalld is installed
+    apt:
+      name: firewalld
+      state: present
+      update_cache: true
+
+
+  - name: Directory erstellen / Dateirechte setzen
+    ansible.builtin.file:
+      path: /etc/firewalld/zones/public.xml
+      state: directory
+      owner: devops
+      group: users
+      mode: 0644
+
+  - name: public.xml Datei erstellen
+    ansible.builtin.copy:
+      path: /etc/public.conf
+      dest: /etc/firewalld/zones/public.xml
+      content: |
+        <?xml version="1.0" encoding="utf-8"?>
+        <zone>
+        <short>Public</short>
+        <description>For use in public areas. You do not trust the other computers on networks to not harm your computer. Only selected incoming connections are accepted.</description>
+        <service name="ssh"/>
+        <service name="snmp"/>
+        </zone>
+
+  - name: Notfall User einrichten
+    ansible.builtin.user:
+      name: Notfall User
+      password: passwort
+      groups:
+        - adm
+        - sudo
+        - systemd-journal
+        - lpadmin
+
+  - name: Respository anbinden
+    ansible.builtin.copy:
+        path: /etc/ppi-repolist.conf
+        dest: /etc/apt/sources.list.d/ppi-repo.list
+        content: |
+          deb [ trusted=yes ] http://phlox.ppi.int/ppi-repo/ubuntu ./
+
+  - name: Install SNMP
+    apt:
+     name: snmp
+     state: present
+     update_cache: true
+
+  - name: Datei erstellen / Agent Behaivior
+    ansible.builtin.copy:
+      path: /etc/snmpd.conf
+      dest: /etc/snmp/snmpd.conf
+      content: |
+          #
+
+             agentAddress  udp:161
+  
+  
+             rocommunity public 172.30.101.19/32
+  
+
+             rocommunity public 172.29.2.56/32
+  
+
+             rocommunity public 127.0.0.1/32
+
+  
+             sysName		Notebook
+             sysLocation    Unknown
+             sysContact     hh-sysadm@ppi.de
+
+     #Tools zur Energiesteuerung installieren
+  - name: Install tlp
+    apt:
+      name: tlp
+      state: present
+      update_cache: true
+
+  - name: Install acpi-call-dkms
+    apt:
+      name: acpi-call-dkms
+      state: present
+      update_cache: true
+
+  - name: Install acpid
+    apt:
+      name: acpid
+      state: present
+      update_cache: true
+
+  - name: Install smartmontools
+    apt:
+      name: smartmontools
+      state: present
+      update_cache: true
+
+  - name: Install fwupd
+    apt:
+      name: fwupd
+      state: present
+      update_cache: true
+
+
+#Tool fuer Verschluesselung von mobilen Datentraegern
+
+  - name: Install cryptsetup
+    apt:
+      name: cryptsetup
+      state: present
+      update_cache: true
+
+
+#openvpn installieren
+
+  - name: Install openvpn
+    apt:
+      name: openvpn
+      state: present
+      update_cache: true
+
+
+  - name: Install network-manager
+    apt:
+      name: network-manager
+      state: present
+      update_cache: true
+
+
+  - name: Install network-manager-gnome
+    apt:
+      name: network-manager-gnome
+      state: present
+      update_cache: true
+
+
+  - name: Install network-manager-openvpn
+    apt:
+      name: network-manager-openvpn
+      state: present
+      update_cache: true
+
+
+  - name: Install network-manager-openvpn-gnome
+    apt:
+      name: network-manager-openvpn-gnome
+      state: present
+      update_cache: true
+
+
+  - name: enable NetworkManager
+    ansible.builtin.service:
+      name: NetworkManager
+      enabled: true
+      state: started
+
+
+  - name: Inhalt von ppi
+    ansible.builtin.copy:
+      path:
+      dest: /etc/ppiinhalt.list
+      content: |
+
+        [connection]
+         id=PPI
+         uuid=<eine neu erzeugte UUID z.b: 3faa87bd-efd6-572f-9707-b150c4ef3b05>
+         type=vpn
+         autoconnect=false
+
+
+         [vpn]
+         auth=SHA256
+         ca=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         cert=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         cert-pass-flags=1
+         cipher=AES-256-CBC
+         connection-type=password-tls
+         key=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         password-flags=2
+         ping=10
+         ping-restart=60
+         remote=vpn.ppi.de:1195:udp
+         remote-cert-tls=server
+         remote-random=yes
+         reneg-seconds=0
+         username=ja
+         verify-x509-name=name:vpn.ppi.de
+         service-type=org.freedesktop.NetworkManager.openvpn
+      
+         [ipv4]
+         dns-search=ppi.int;ppidev.net;ppi.de;
+         method=auto
+         never-default=true
+      
+         [ipv6]
+         addr-gen-mode=stable-privacy
+         dns-search=
+         method=ignore
+      
+      
+         [proxy]
+  
+
+         Inhalt von Kiel
+    
+         [connection]
+         id=Kiel
+         uuid=<eine neu erzeugte UUID z.b: 3faa87bd-efd6-572f-9707-b150c4ef3b05>
+         type=vpn
+         autoconnect=false
+
+
+         [vpn]
+         auth=SHA256
+         ca=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         cert=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         cert-pass-flags=1
+         cipher=AES-256-CBC
+         connection-type=password-tls
+         key=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         password-flags=2
+         ping=10
+         ping-restart=60
+         remote=vpnki.ppi.de:1195:udp
+         remote-cert-tls=server
+         remote-random=yes
+         reneg-seconds=0
+         username=ja
+         verify-x509-name=name:vpn.ppi.de
+         service-type=org.freedesktop.NetworkManager.openvpn
+      
+         [ipv4]
+         dns-search=ppi.int;ppidev.net;ppi.de;
+         method=auto
+         never-default=true
+      
+         [ipv6]
+         addr-gen-mode=stable-privacy
+         dns-search=
+         method=ignore
+      
+      
+         [proxy]
+   
+
+         Inhalt von Hamburg
+    
+         [connection]
+         id=Hamburg
+         uuid=<eine neu erzeugte UUID z.b: 3faa87bd-efd6-572f-9707-b150c4ef3b05>
+         type=vpn
+         autoconnect=false
+
+
+         [vpn]
+         auth=SHA256
+         ca=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         cert=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         cert-pass-flags=1
+         cipher=AES-256-CBC
+         connection-type=password-tls
+         key=/home/<Userkürzel>/openvpn/<Userkürzel>.pfx
+         password-flags=2
+         ping=10
+         ping-restart=60
+         remote=vpnhh.ppi.de:1195:udp
+         remote-cert-tls=server
+         remote-random=yes
+         reneg-seconds=0
+         username=ja
+         verify-x509-name=name:vpn.ppi.de
+         service-type=org.freedesktop.NetworkManager.openvpn
+      
+         [ipv4]
+         dns-search=ppi.int;ppidev.net;ppi.de;
+         method=auto
+         never-default=true
+      
+         [ipv6]
+         addr-gen-mode=stable-privacy
+         dns-search=
+         method=ignore
+      
+      
+        [proxy]
